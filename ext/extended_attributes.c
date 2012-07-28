@@ -94,7 +94,7 @@ static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const
 /* FIXME: This function isn't thread safe! Serialize! */
 int retval = 10;
 static char *value_buffer = NULL;
-int value_buffer_size = ATTR_MAX_VALUELEN;
+static int value_buffer_size = ATTR_MAX_VALUELEN;
 
   if( value_buffer == NULL ) {
     value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
