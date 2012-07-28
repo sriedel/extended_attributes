@@ -5,19 +5,9 @@
 
 #include "ruby.h"
 
-typedef struct { 
-  char *name; 
-  char *value; 
-} key_value_t;
-
-typedef struct _key_value_list_t {
-  key_value_t *entry;
-  struct _key_value_list_t *next;
-} key_value_list_t;
-
-static key_value_list_t *read_attrs( const char *filepath );
-static key_value_t *list_attribute( const char *filepath, const char *attribute_name );
-static key_value_list_t *add_key_value_to_list( key_value_list_t *list, key_value_t *entry );
+static void read_attrs( const char *filepath );
+static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name );
+static void read_attributes_into_hash( const char *filepath, VALUE hash );
 
 static VALUE ea_init( VALUE self, VALUE given_path );
 static VALUE ea_fetch( VALUE self, VALUE key );
@@ -54,9 +44,6 @@ VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
 VALUE path_value = rb_iv_get( self, "@path" );
 VALUE path_string = StringValue( path_value );
 char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
-key_value_list_t *attribute_list = read_attrs( path );
-key_value_list_t *iter = NULL;
-key_value_list_t *iter_next = NULL;
 
   // NOTE: rb_hash_clear is not public for the C API because apparently
   //       nothing in the C API is public unless explicitly requested
@@ -68,20 +55,9 @@ key_value_list_t *iter_next = NULL;
   attributes_hash = rb_hash_new();
   rb_iv_set( self, "@attributes_hash", attributes_hash );
 
-  for( iter = attribute_list; iter != NULL; iter = iter_next ) {
-    key_value_t *entry = iter->entry;
-    iter_next = iter->next;
-
-    rb_hash_aset( attributes_hash, rb_str_new_cstr(entry->name), rb_str_new_cstr(entry->value) );
-    free( entry->name );
-    free( entry->value );
-    free( entry );
-
-    free( iter );
-  }
+  read_attributes_into_hash( path, attributes_hash );
 
   free(path);
-
 }
 
 static VALUE ea_set( VALUE self, VALUE key, VALUE value )
@@ -113,17 +89,17 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
 }
 
-static key_value_t *list_attribute( const char *filepath, const char *attribute_name )
+static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name )
 {
 /* FIXME: This function isn't thread safe! Serialize! */
 int retval = 10;
 static char *value_buffer = NULL;
 int value_buffer_size = ATTR_MAX_VALUELEN;
-key_value_t *key_value = NULL;
 
   if( value_buffer == NULL ) {
     value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
   }
+
   memset( value_buffer, 0, value_buffer_size );
 
   retval = attr_get( filepath, attribute_name, value_buffer, &value_buffer_size, ATTR_DONTFOLLOW );
@@ -132,14 +108,11 @@ key_value_t *key_value = NULL;
     exit(-2);
   }
 
-  key_value = (key_value_t*)malloc( sizeof( key_value_t ) );
-  key_value->name = strdup( attribute_name );
-  key_value->value = strdup( value_buffer );
-
-  return key_value;
+  rb_hash_aset( hash, rb_str_new_cstr( attribute_name ), 
+                      rb_str_new_cstr( value_buffer ) );
 }
 
-static key_value_list_t *read_attrs( const char *filepath )
+static void read_attributes_into_hash( const char *filepath, VALUE hash )
 {
 int retval = 10;
 int buffersize = ATTR_MAX_VALUELEN + sizeof(attrlist_t);
@@ -148,8 +121,6 @@ attrlist_cursor_t cursor;
 attrlist_t *list = NULL;
 int done = 0;
 int entry_index = 0;
-key_value_t *key_value = NULL;
-key_value_list_t *key_value_list = NULL;
 
   memset( &cursor, 0, sizeof(attrlist_cursor_t) );
   while( !done ) {
@@ -166,21 +137,10 @@ key_value_list_t *key_value_list = NULL;
     for( entry_index = 0; entry_index < list->al_count; ++entry_index ) {
       attrlist_ent_t *list_entry = ATTR_ENTRY( (char*)buffer, entry_index );
 
-      key_value = list_attribute( filepath, list_entry->a_name );
-      key_value_list = add_key_value_to_list( key_value_list, key_value );
+      add_attribute_value_to_hash( filepath, hash, list_entry->a_name );
     }
     done = !list->al_more;
   }
 
   free( buffer );
-  return key_value_list;
-}
-
-static key_value_list_t *add_key_value_to_list( key_value_list_t *list, key_value_t *entry ) 
-{
-key_value_list_t *new_list_head = (key_value_list_t*)malloc( sizeof( key_value_list_t ) );
-  new_list_head->next = list;
-  new_list_head->entry = entry;
-
-  return new_list_head;
 }

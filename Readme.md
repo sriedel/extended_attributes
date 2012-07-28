@@ -21,5 +21,4 @@ Currently, only the getter accessors are implemented:
 * Add setters
 * Use attr_multi to reduce accesses to the filesystem layer
 * Raise proper exceptions from the C extension
-* Remove pure C copy buffers for strings
 * Add filesystem capability check (?)
