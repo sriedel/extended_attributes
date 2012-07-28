@@ -94,7 +94,7 @@ static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const
 /* FIXME: This function isn't thread safe! Serialize! */
 int retval = 10;
 static char *value_buffer = NULL;
-static int value_buffer_size = ATTR_MAX_VALUELEN;
+int value_buffer_size = ATTR_MAX_VALUELEN;
 
   if( value_buffer == NULL ) {
     value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
@@ -106,6 +106,10 @@ static int value_buffer_size = ATTR_MAX_VALUELEN;
   if( retval == -1 ) {
     /* FIXME: Raise Errno Exception as soon as I figure out how */
     exit(-2);
+  }
+
+  if( value_buffer_size == 0 ) {
+    return;
   }
 
   rb_hash_aset( hash, rb_str_new_cstr( attribute_name ), 
@@ -136,7 +140,6 @@ int entry_index = 0;
 
     for( entry_index = 0; entry_index < list->al_count; ++entry_index ) {
       attrlist_ent_t *list_entry = ATTR_ENTRY( (char*)buffer, entry_index );
-
       add_attribute_value_to_hash( filepath, hash, list_entry->a_name );
     }
     done = !list->al_more;
