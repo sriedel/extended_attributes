@@ -8,6 +8,7 @@
 static void read_attrs( const char *filepath );
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name );
 static void read_attributes_into_hash( const char *filepath, VALUE hash );
+static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor );
 
 static VALUE ea_init( VALUE self, VALUE given_path );
 static VALUE ea_fetch( VALUE self, VALUE key );
@@ -116,9 +117,20 @@ int value_buffer_size = ATTR_MAX_VALUELEN;
                       rb_str_new_cstr( value_buffer ) );
 }
 
+static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor )
+{
+int retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, cursor );
+
+  if( retval == -1 ) {
+    /* FIXME: Raise Errno Exception as soon as I figure out how */
+    fprintf( stderr, "Error retrieving list: %s\n", strerror(errno) );
+    exit(-1);
+  }
+
+}
+
 static void read_attributes_into_hash( const char *filepath, VALUE hash )
 {
-int retval = 10;
 int buffersize = ATTR_MAX_VALUELEN + sizeof(attrlist_t);
 static void *buffer = NULL;
 attrlist_cursor_t cursor;
@@ -132,14 +144,7 @@ int entry_index = 0;
 
   memset( &cursor, 0, sizeof(attrlist_cursor_t) );
   while( !done ) {
-    retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, &cursor );
-
-    if( retval == -1 ) {
-      /* FIXME: Raise Errno Exception as soon as I figure out how */
-      fprintf( stderr, "Error retrieving list: %s\n", strerror(errno) );
-      exit(-1);
-    }
-
+    get_next_attribute_list_entries( filepath, (char*)buffer, buffersize, &cursor );
     list = (attrlist_t*)buffer;
 
     for( entry_index = 0; entry_index < list->al_count; ++entry_index ) {
