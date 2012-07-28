@@ -9,6 +9,7 @@ static void read_attrs( const char *filepath );
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name );
 static void read_attributes_into_hash( const char *filepath, VALUE hash );
 static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor );
+static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size );
 
 static VALUE ea_init( VALUE self, VALUE given_path );
 static VALUE ea_fetch( VALUE self, VALUE key );
@@ -90,10 +91,22 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
 }
 
+static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )
+{
+int retval = 10;
+
+  memset( buffer, 0, *buffer_size );
+
+  retval = attr_get( filepath, attribute_name, buffer, buffer_size, ATTR_DONTFOLLOW );
+  if( retval == -1 ) {
+    /* FIXME: Raise Errno Exception as soon as I figure out how */
+    exit(-2);
+  }
+}
+
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name )
 {
 /* FIXME: This function isn't thread safe! Serialize! */
-int retval = 10;
 static char *value_buffer = NULL;
 int value_buffer_size = ATTR_MAX_VALUELEN;
 
@@ -101,20 +114,12 @@ int value_buffer_size = ATTR_MAX_VALUELEN;
     value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
   }
 
-  memset( value_buffer, 0, value_buffer_size );
+  get_attribute_value_for_name( filepath, attribute_name, value_buffer, &value_buffer_size );
 
-  retval = attr_get( filepath, attribute_name, value_buffer, &value_buffer_size, ATTR_DONTFOLLOW );
-  if( retval == -1 ) {
-    /* FIXME: Raise Errno Exception as soon as I figure out how */
-    exit(-2);
+  if( value_buffer_size > 0 ) {
+    rb_hash_aset( hash, rb_str_new_cstr( attribute_name ), 
+                        rb_str_new_cstr( value_buffer ) );
   }
-
-  if( value_buffer_size == 0 ) {
-    return;
-  }
-
-  rb_hash_aset( hash, rb_str_new_cstr( attribute_name ), 
-                      rb_str_new_cstr( value_buffer ) );
 }
 
 static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor )
@@ -126,7 +131,6 @@ int retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, cu
     fprintf( stderr, "Error retrieving list: %s\n", strerror(errno) );
     exit(-1);
   }
-
 }
 
 static void read_attributes_into_hash( const char *filepath, VALUE hash )
