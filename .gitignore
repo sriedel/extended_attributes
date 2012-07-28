@@ -2,3 +2,4 @@ tmp
 ext/*.o
 ext/*.so
 ext/Makefile
+ext/mkmf.log
