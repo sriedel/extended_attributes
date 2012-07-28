@@ -120,11 +120,15 @@ static void read_attributes_into_hash( const char *filepath, VALUE hash )
 {
 int retval = 10;
 int buffersize = ATTR_MAX_VALUELEN + sizeof(attrlist_t);
-void *buffer = (void*)malloc( buffersize );
+static void *buffer = NULL;
 attrlist_cursor_t cursor;
 attrlist_t *list = NULL;
 int done = 0;
 int entry_index = 0;
+
+  if( buffer == NULL ) {
+    buffer = (void*)malloc( buffersize );
+  }
 
   memset( &cursor, 0, sizeof(attrlist_cursor_t) );
   while( !done ) {
@@ -144,6 +148,4 @@ int entry_index = 0;
     }
     done = !list->al_more;
   }
-
-  free( buffer );
 }
