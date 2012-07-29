@@ -46,30 +46,26 @@ VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
 
 static VALUE ea_refresh_attributes( VALUE self ) 
 {
-VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
+// NOTE: rb_hash_clear is not public for the C API because apparently
+//       nothing in the C API is public unless explicitly requested
+//       (q.v. http://www.ruby-forum.com/topic/4402535). 
+//      
+//       Until then, create a new hash instead and hope we don't leak memory
+//       because of this.
+// rb_hash_clear( attributes_hash );
+//
+VALUE original_attributes_hash = rb_hash_new();
+
 VALUE path_value = rb_iv_get( self, "@path" );
 VALUE path_string = StringValue( path_value );
 char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
 
-  // NOTE: rb_hash_clear is not public for the C API because apparently
-  //       nothing in the C API is public unless explicitly requested
-  //       (q.v. http://www.ruby-forum.com/topic/4402535). 
-  //      
-  //       Until then, create a new hash instead and hope we don't leak memory
-  //       because of this.
-  // rb_hash_clear( attributes_hash );
-  attributes_hash = rb_hash_new();
-  rb_iv_set( self, "@attributes_hash", attributes_hash );
-
-  read_attributes_into_hash( path, attributes_hash );
-
-  rb_iv_set( self, "@original_attributes_hash", 
-                   rb_hash_dup( attributes_hash ) );
+  read_attributes_into_hash( path, original_attributes_hash );
+  rb_iv_set( self, "@original_attributes_hash", original_attributes_hash );
 
   free(path);
   
-  rb_iv_set( self, "@is_persisted", Qtrue );
-  return Qnil;
+  return ea_reset_attributes( self );
 }
 
 static VALUE ea_reset_attributes( VALUE self )
