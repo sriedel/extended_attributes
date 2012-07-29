@@ -124,4 +124,26 @@ user.attr2="bar"
       subject.attributes.should eq( subject.original_attributes ) 
     end
   end
+
+  describe "#persisted?" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    it "should be true directly after reading" do
+      subject.should be_persisted
+    end
+
+    it "should be false after modifying the attributes" do
+      subject["attr1"] = "quux"
+      subject.should_not be_persisted
+    end
+
+    it "should be true after reset" do
+      subject["attr1"] = "quux"
+      subject.reset
+      subject.should be_persisted
+    end
+
+    it "should be true after writing"
+    it "should be true if changing all attributes back to the original value"
+  end
 end

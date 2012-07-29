@@ -31,6 +31,7 @@ VALUE path = rb_str_dup( given_path ); /* TODO: verify path is a string! */
   rb_iv_set( self, "@attributes_hash", rb_hash_new() );
   rb_iv_set( self, "@original_attributes_hash", rb_hash_new() );
   rb_iv_set( self, "@path", path );
+  rb_iv_set( self, "@is_persisted", Qtrue );
 
   ea_refresh_attributes( self );
 
@@ -66,6 +67,8 @@ char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
                    rb_hash_dup( attributes_hash ) );
 
   free(path);
+  
+  rb_iv_set( self, "@is_persisted", Qtrue );
   return Qnil;
 }
 
@@ -75,6 +78,7 @@ VALUE original_attributes = rb_iv_get( self, "@original_attributes_hash" );
 
   rb_iv_set( self, "@attributes_hash", 
                    rb_hash_dup( original_attributes ) );
+  rb_iv_set( self, "@is_persisted", Qtrue );
   return Qnil;
 }
 
@@ -82,6 +86,7 @@ static VALUE ea_set( VALUE self, VALUE key, VALUE value )
 {
 /* FIXME: to_s key and value! */
 VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
+  rb_iv_set( self, "@is_persisted", Qfalse );
   return rb_hash_aset( attributes_hash, key, value );
 }
 
@@ -100,6 +105,11 @@ static VALUE ea_get_attributes( VALUE self )
   return rb_iv_get( self, "@attributes_hash" );
 }
 
+static VALUE ea_is_persisted( VALUE self )
+{
+  return rb_iv_get( self, "@is_persisted" );
+}
+
 void Init_extended_attributes( void ) {
   cExtendedAttributes = rb_define_class( "ExtendedAttributes", rb_cObject );
   rb_define_method( cExtendedAttributes, "initialize", ea_init, 1 );
@@ -112,6 +122,7 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "original_attributes", ea_get_original_attributes, 0 );
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
   rb_define_method( cExtendedAttributes, "reset", ea_reset_attributes, 0 );
+  rb_define_method( cExtendedAttributes, "persisted?", ea_is_persisted, 0 );
 }
 
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )
