@@ -30,14 +30,24 @@ user.attr2="bar"
 
 
   describe "the initializer" do
-    subject { ExtendedAttributes.new( file_with_attributes ) }
+    subject { ExtendedAttributes.new( file_without_attributes ) }
 
     it "should exist" do
       subject.should be_an( ExtendedAttributes )
     end
 
     it "should have a filename attribute" do
-      subject.path.should == file_with_attributes
+      subject.path.should == file_without_attributes
+    end
+
+    it "should have an attributes attribute" do
+      subject.attributes.should be_a( Hash )
+      subject.attributes.size.should == 0
+    end
+
+    it "should have an original attributes attribute" do
+      subject.original_attributes.should be_a( Hash )
+      subject.original_attributes.size.should == 0
     end
   end
 
@@ -74,6 +84,8 @@ user.attr2="bar"
         subject.refresh_attributes
         subject.attributes.should be_a( Hash )
         subject.attributes.size.should == 0
+
+        subject.original_attributes.should eq( subject.attributes )
       end
     end
 
@@ -83,6 +95,8 @@ user.attr2="bar"
         subject.refresh_attributes
         subject.attributes.should be_a( Hash )
         subject.attributes.size.should == 2
+
+        subject.original_attributes.should eq( subject.attributes )
       end
     end
   end

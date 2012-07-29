@@ -16,6 +16,7 @@ static VALUE ea_fetch( VALUE self, VALUE key );
 static VALUE ea_set( VALUE self, VALUE key, VALUE value );
 static VALUE ea_get_path( VALUE self );
 static VALUE ea_get_attributes( VALUE self );
+static VALUE ea_get_original_attributes( VALUE self );
 static VALUE ea_refresh_attributes( VALUE self );
 void Init_extended_attributes(void);
 
@@ -23,10 +24,10 @@ VALUE cExtendedAttributes;
 
 static VALUE ea_init( VALUE self, VALUE given_path )
 {
-VALUE attributes_hash = rb_hash_new();
 VALUE path = rb_str_dup( given_path ); /* TODO: verify path is a string! */
 
-  rb_iv_set( self, "@attributes_hash", attributes_hash );
+  rb_iv_set( self, "@attributes_hash", rb_hash_new() );
+  rb_iv_set( self, "@original_attributes_hash", rb_hash_new() );
   rb_iv_set( self, "@path", path );
 
   ea_refresh_attributes( self );
@@ -59,6 +60,8 @@ char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
 
   read_attributes_into_hash( path, attributes_hash );
 
+  rb_iv_set( self, "@original_attributes_hash", attributes_hash );
+
   free(path);
 }
 
@@ -72,6 +75,11 @@ VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
 static VALUE ea_get_path( VALUE self ) 
 {
   return rb_iv_get( self, "@path" );
+}
+
+static VALUE ea_get_original_attributes( VALUE self ) 
+{
+  return rb_iv_get( self, "@original_attributes_hash" );
 }
 
 static VALUE ea_get_attributes( VALUE self ) 
@@ -88,6 +96,7 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "[]=", ea_set, 2 );
   rb_define_method( cExtendedAttributes, "path", ea_get_path, 0 );
   rb_define_method( cExtendedAttributes, "attributes", ea_get_attributes, 0 );
+  rb_define_method( cExtendedAttributes, "original_attributes", ea_get_original_attributes, 0 );
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
 }
 
