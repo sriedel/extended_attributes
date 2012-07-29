@@ -182,7 +182,9 @@ user.attr3="i get removed"
     subject { ExtendedAttributes.new( file_with_attributes ) }
 
     it "should return an empty hash if nothing changed" do
-      subject.attribute_changes.should eq( {} )
+      subject.attribute_changes.should eq( :changed => {},
+                                           :removed => {},
+                                           :added   => {} )
     end
 
     context "when something changed" do
@@ -193,9 +195,9 @@ user.attr3="i get removed"
       end
 
       it "should return a hash reflecting the changes" do
-        subject.attribute_changes.should eq( { "attr2" => "some other value",
-                                               "attr3" => nil,
-                                               "attr4" => "a new value" } )
+        subject.attribute_changes.should eq( :changed => { "attr2" => "some other value" },
+                                             :removed => { "attr3" => nil },
+                                             :added   => { "attr4" => "a new value" } )
       end
     end
     
