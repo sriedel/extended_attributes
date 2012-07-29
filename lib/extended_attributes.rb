@@ -37,7 +37,22 @@ class ExtendedAttributes
   alias_method :set, :[]=
 
   def attribute_changes
-    {}
+    changes = {}
+
+    attr_ary = @attributes_hash.to_a
+    original_ary = @original_attributes_hash.to_a
+
+    attr_keys = @attributes_hash.keys
+    original_keys = @original_attributes_hash.keys
+
+    unchanged_keys = ( attr_ary & original_ary ).map(&:first)
+    deleted_keys = original_keys - attr_keys
+    changed_keys = attr_keys - unchanged_keys # includes added keys
+
+    deleted_keys.each_with_object( changes ) { |key, changes| changes[key] = nil }
+    changed_keys.each_with_object( changes ) { |key, changes| changes[key] = @attributes_hash[key] }
+
+    changes
   end
 
   def reset

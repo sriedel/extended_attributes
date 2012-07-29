@@ -109,7 +109,9 @@ user.attr3="i get removed"
       subject["attr1"].should == subject.attributes["attr1"]
     end
 
-    it "should convert keys to strings"
+    it "should convert keys to strings" do
+      subject[:attr1].should == subject.attributes["attr1"]
+    end
   end
 
   describe "#[]=" do
@@ -129,7 +131,10 @@ user.attr3="i get removed"
       subject.attributes.should_not have_key( "attr3" )
     end
 
-    it "should delete the attribute if nil is assigned"
+    it "should delete the attribute if nil is assigned" do
+      subject["attr3"] = nil
+      subject.attributes.should_not have_key( "attr3" )
+    end
 
     it "should convert keys and values to strings if possible" do
       subject[:attr4] = :foo
@@ -182,7 +187,6 @@ user.attr3="i get removed"
 
     context "when something changed" do
       before( :each ) do
-        pending
         subject["attr2"] = "some other value"
         subject["attr3"] = nil
         subject["attr4"] = "a new value"
