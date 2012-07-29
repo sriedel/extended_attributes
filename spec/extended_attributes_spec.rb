@@ -102,6 +102,16 @@ user.attr3="i get removed"
     end
   end
 
+  describe "#[]" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    it "should return the attribute" do
+      subject["attr1"].should == subject.attributes["attr1"]
+    end
+
+    it "should convert keys to strings"
+  end
+
   describe "#[]=" do
     subject { ExtendedAttributes.new( file_with_attributes ) }
 
@@ -120,6 +130,16 @@ user.attr3="i get removed"
     end
 
     it "should delete the attribute if nil is assigned"
+
+    it "should convert keys and values to strings if possible" do
+      pending
+
+      subject[:attr4] = :foo
+      subject["attr4"].should == "foo"
+
+      subject["attr4"] = 234
+      subject["attr4"].should == "234"
+    end
   end
 
   describe "#reset" do

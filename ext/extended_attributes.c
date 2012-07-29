@@ -41,7 +41,9 @@ VALUE path = rb_str_dup( given_path ); /* TODO: verify path is a string! */
 static VALUE ea_fetch( VALUE self, VALUE key )
 {
 VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
-  return rb_hash_lookup( attributes_hash, key );
+VALUE key_string = StringValue( key );
+
+  return rb_hash_lookup( attributes_hash, key_string );
 }
 
 static VALUE ea_refresh_attributes( VALUE self ) 
@@ -87,17 +89,17 @@ VALUE changes_hash = rb_hash_new();
 
 static VALUE ea_set( VALUE self, VALUE key, VALUE value )
 {
-/* FIXME: to_s key and value! */
 VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
 VALUE value_string = StringValue( value );
+VALUE key_string = StringValue( key );
 
   rb_iv_set( self, "@is_persisted", Qfalse );
 
   if( RSTRING_LEN( value ) == 0  ) {
-    return rb_hash_delete( attributes_hash, key );
+    return rb_hash_delete( attributes_hash, key_string );
   }
 
-  return rb_hash_aset( attributes_hash, key, value );
+  return rb_hash_aset( attributes_hash, key_string, value_string );
 }
 
 static VALUE ea_get_path( VALUE self ) 
