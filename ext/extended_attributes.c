@@ -18,6 +18,8 @@ static VALUE ea_get_path( VALUE self );
 static VALUE ea_get_attributes( VALUE self );
 static VALUE ea_get_original_attributes( VALUE self );
 static VALUE ea_refresh_attributes( VALUE self );
+static VALUE ea_reset_attributes( VALUE self );
+
 void Init_extended_attributes(void);
 
 VALUE cExtendedAttributes;
@@ -60,9 +62,20 @@ char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
 
   read_attributes_into_hash( path, attributes_hash );
 
-  rb_iv_set( self, "@original_attributes_hash", attributes_hash );
+  rb_iv_set( self, "@original_attributes_hash", 
+                   rb_hash_dup( attributes_hash ) );
 
   free(path);
+  return Qnil;
+}
+
+static VALUE ea_reset_attributes( VALUE self )
+{
+VALUE original_attributes = rb_iv_get( self, "@original_attributes_hash" );
+
+  rb_iv_set( self, "@attributes_hash", 
+                   rb_hash_dup( original_attributes ) );
+  return Qnil;
 }
 
 static VALUE ea_set( VALUE self, VALUE key, VALUE value )
@@ -98,6 +111,7 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "attributes", ea_get_attributes, 0 );
   rb_define_method( cExtendedAttributes, "original_attributes", ea_get_original_attributes, 0 );
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
+  rb_define_method( cExtendedAttributes, "reset", ea_reset_attributes, 0 );
 }
 
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )

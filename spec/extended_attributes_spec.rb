@@ -100,4 +100,28 @@ user.attr2="bar"
       end
     end
   end
+
+  describe "#[]=" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    it "should set the attribute in the attributes hash" do
+      subject["attr1"] = "quux"
+      subject.attributes["attr1"].should == "quux"
+    end
+
+    it "should not modify the original attributes hash" do
+      expect { subject["attr1"] = "quux" }.to_not change { subject.original_attributes }
+    end
+  end
+
+  describe "#reset" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    it "should reset the attributes hash to the original attributes" do
+      subject["attr1"] = "quux"
+      subject["attr3"] = "asdfasdf"
+      subject.reset
+      subject.attributes.should eq( subject.original_attributes ) 
+    end
+  end
 end
