@@ -39,13 +39,9 @@ class ExtendedAttributes
   def attribute_changes
     changes = {}
 
-    attr_ary = @attributes_hash.to_a
-    original_ary = @original_attributes_hash.to_a
-
     attr_keys = @attributes_hash.keys
     original_keys = @original_attributes_hash.keys
 
-    unchanged_keys = ( attr_ary & original_ary ).map(&:first)
     deleted_keys = original_keys - attr_keys
     changed_keys = attr_keys - unchanged_keys # includes added keys
 
@@ -62,5 +58,13 @@ class ExtendedAttributes
 
   def persisted?
     @is_persisted
+  end
+
+  private
+  def unchanged_keys
+    attr_ary = @attributes_hash.to_a
+    original_ary = @original_attributes_hash.to_a
+
+    ( attr_ary & original_ary ).map(&:first)
   end
 end
