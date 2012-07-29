@@ -78,11 +78,25 @@ VALUE original_attributes = rb_iv_get( self, "@original_attributes_hash" );
   return Qnil;
 }
 
+static VALUE ea_attribute_changes( VALUE self ) 
+{
+VALUE changes_hash = rb_hash_new();
+
+  return changes_hash;
+}
+
 static VALUE ea_set( VALUE self, VALUE key, VALUE value )
 {
 /* FIXME: to_s key and value! */
 VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
+VALUE value_string = StringValue( value );
+
   rb_iv_set( self, "@is_persisted", Qfalse );
+
+  if( RSTRING_LEN( value ) == 0  ) {
+    return rb_hash_delete( attributes_hash, key );
+  }
+
   return rb_hash_aset( attributes_hash, key, value );
 }
 
@@ -119,6 +133,7 @@ void Init_extended_attributes( void ) {
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
   rb_define_method( cExtendedAttributes, "reset", ea_reset_attributes, 0 );
   rb_define_method( cExtendedAttributes, "persisted?", ea_is_persisted, 0 );
+  rb_define_method( cExtendedAttributes, "attribute_changes", ea_attribute_changes, 0 );
 }
 
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )

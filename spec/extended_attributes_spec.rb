@@ -17,8 +17,9 @@ describe ExtendedAttributes do
     File.open( ATTR_TEMPLATE_FILE, "w" ) do |fh|
       fh.puts <<-EOF
 # file: #{attrfile}
-user.attr1="foo"
-user.attr2="bar"
+user.attr1="i stay the same"
+user.attr2="i change"
+user.attr3="i get removed"
 
       EOF
     end
@@ -64,8 +65,8 @@ user.attr2="bar"
       subject { ExtendedAttributes.new( file_with_attributes ) }
 
       it "should have them assigned to the attributes hash" do
-        subject["attr1"].should == "foo"
-        subject["attr2"].should == "bar"
+        subject["attr1"].should == "i stay the same"
+        subject["attr2"].should == "i change"
       end
     end
   end
@@ -94,7 +95,7 @@ user.attr2="bar"
       it "should reset the attributes hash to reflect the set attributes" do
         subject.refresh_attributes
         subject.attributes.should be_a( Hash )
-        subject.attributes.size.should == 2
+        subject.attributes.size.should == 3
 
         subject.original_attributes.should eq( subject.attributes )
       end
@@ -112,6 +113,13 @@ user.attr2="bar"
     it "should not modify the original attributes hash" do
       expect { subject["attr1"] = "quux" }.to_not change { subject.original_attributes }
     end
+
+    it "should delete the attribute if an empty string is assigned" do
+      subject["attr3"] = ""
+      subject.attributes.should_not have_key( "attr3" )
+    end
+
+    it "should delete the attribute if nil is assigned"
   end
 
   describe "#reset" do
@@ -145,5 +153,29 @@ user.attr2="bar"
 
     it "should be true after writing"
     it "should be true if changing all attributes back to the original value"
+  end
+
+  describe "#attribute_changes" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    it "should return an empty hash if nothing changed" do
+      subject.attribute_changes.should eq( {} )
+    end
+
+    context "when something changed" do
+      before( :each ) do
+        pending
+        subject["attr2"] = "some other value"
+        subject["attr3"] = nil
+        subject["attr4"] = "a new value"
+      end
+
+      it "should return a hash reflecting the changes" do
+        subject.attribute_changes.should eq( { "attr2" => "some other value",
+                                               "attr3" => nil,
+                                               "attr4" => "a new value" } )
+      end
+    end
+    
   end
 end
