@@ -132,8 +132,6 @@ user.attr3="i get removed"
     it "should delete the attribute if nil is assigned"
 
     it "should convert keys and values to strings if possible" do
-      pending
-
       subject[:attr4] = :foo
       subject["attr4"].should == "foo"
 

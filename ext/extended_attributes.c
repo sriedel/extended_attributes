@@ -11,40 +11,11 @@ static void read_attributes_into_hash( const char *filepath, VALUE hash );
 static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor );
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size );
 
-static VALUE ea_init( VALUE self, VALUE given_path );
-static VALUE ea_fetch( VALUE self, VALUE key );
-static VALUE ea_set( VALUE self, VALUE key, VALUE value );
-static VALUE ea_get_path( VALUE self );
-static VALUE ea_get_attributes( VALUE self );
-static VALUE ea_get_original_attributes( VALUE self );
 static VALUE ea_refresh_attributes( VALUE self );
-static VALUE ea_reset_attributes( VALUE self );
 
-void Init_extended_attributes(void);
+void Init_extended_attributes_ext(void);
 
 VALUE cExtendedAttributes;
-
-static VALUE ea_init( VALUE self, VALUE given_path )
-{
-VALUE path = rb_str_dup( given_path ); /* TODO: verify path is a string! */
-
-  rb_iv_set( self, "@attributes_hash", rb_hash_new() );
-  rb_iv_set( self, "@original_attributes_hash", rb_hash_new() );
-  rb_iv_set( self, "@path", path );
-  rb_iv_set( self, "@is_persisted", Qtrue );
-
-  ea_refresh_attributes( self );
-
-  return self;
-}
-
-static VALUE ea_fetch( VALUE self, VALUE key )
-{
-VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
-VALUE key_string = StringValue( key );
-
-  return rb_hash_lookup( attributes_hash, key_string );
-}
 
 static VALUE ea_refresh_attributes( VALUE self ) 
 {
@@ -66,76 +37,13 @@ char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
   rb_iv_set( self, "@original_attributes_hash", original_attributes_hash );
 
   free(path);
-  
-  return ea_reset_attributes( self );
+
+  return rb_funcall( self, rb_intern("reset"), 0 );
 }
 
-static VALUE ea_reset_attributes( VALUE self )
-{
-VALUE original_attributes = rb_iv_get( self, "@original_attributes_hash" );
-
-  rb_iv_set( self, "@attributes_hash", 
-                   rb_hash_dup( original_attributes ) );
-  rb_iv_set( self, "@is_persisted", Qtrue );
-  return Qnil;
-}
-
-static VALUE ea_attribute_changes( VALUE self ) 
-{
-VALUE changes_hash = rb_hash_new();
-
-  return changes_hash;
-}
-
-static VALUE ea_set( VALUE self, VALUE key, VALUE value )
-{
-VALUE attributes_hash = rb_iv_get( self, "@attributes_hash" );
-VALUE value_string = StringValue( value );
-VALUE key_string = StringValue( key );
-
-  rb_iv_set( self, "@is_persisted", Qfalse );
-
-  if( RSTRING_LEN( value ) == 0  ) {
-    return rb_hash_delete( attributes_hash, key_string );
-  }
-
-  return rb_hash_aset( attributes_hash, key_string, value_string );
-}
-
-static VALUE ea_get_path( VALUE self ) 
-{
-  return rb_iv_get( self, "@path" );
-}
-
-static VALUE ea_get_original_attributes( VALUE self ) 
-{
-  return rb_iv_get( self, "@original_attributes_hash" );
-}
-
-static VALUE ea_get_attributes( VALUE self ) 
-{
-  return rb_iv_get( self, "@attributes_hash" );
-}
-
-static VALUE ea_is_persisted( VALUE self )
-{
-  return rb_iv_get( self, "@is_persisted" );
-}
-
-void Init_extended_attributes( void ) {
+void Init_extended_attributes_ext( void ) {
   cExtendedAttributes = rb_define_class( "ExtendedAttributes", rb_cObject );
-  rb_define_method( cExtendedAttributes, "initialize", ea_init, 1 );
-  rb_define_method( cExtendedAttributes, "fetch", ea_fetch, 1 );
-  rb_define_method( cExtendedAttributes, "[]", ea_fetch, 1 );
-  rb_define_method( cExtendedAttributes, "set", ea_set, 2 );
-  rb_define_method( cExtendedAttributes, "[]=", ea_set, 2 );
-  rb_define_method( cExtendedAttributes, "path", ea_get_path, 0 );
-  rb_define_method( cExtendedAttributes, "attributes", ea_get_attributes, 0 );
-  rb_define_method( cExtendedAttributes, "original_attributes", ea_get_original_attributes, 0 );
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
-  rb_define_method( cExtendedAttributes, "reset", ea_reset_attributes, 0 );
-  rb_define_method( cExtendedAttributes, "persisted?", ea_is_persisted, 0 );
-  rb_define_method( cExtendedAttributes, "attribute_changes", ea_attribute_changes, 0 );
 }
 
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )

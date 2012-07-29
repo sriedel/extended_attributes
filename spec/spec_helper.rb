@@ -1,1 +1,1 @@
-require_relative '../ext/extended_attributes'
+require_relative '../lib/extended_attributes'
