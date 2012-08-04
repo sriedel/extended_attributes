@@ -1,0 +1,11 @@
+= 0.3
+  * misc. fixes
+  * first gemified version
+  * checks for attribute size
+  * add exception throwing to c extension
+
+= 0.2
+  * set attributes
+
+= 0.1
+  * fetch attributes
