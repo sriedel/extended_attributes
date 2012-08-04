@@ -34,6 +34,19 @@ VALUE string = StringValue( ruby_string );
   return strndup( RSTRING_PTR(string), RSTRING_LEN(string) );
 }
 
+/*
+ * call-seq:
+ *    ExtendedAttributes#refresh -> hash of attributes read
+ *
+ * Re-reads the attributes assigned to the instances file system object.
+ * The instance is then reset into a sane state (syncing of original and 
+ * current attribute hashes, resetting the persisted flag to true).
+ *
+ * Any unsaved changes will be lost.
+ *
+ * Will raise Errno-Exceptions if a call to attr_list(3) or attr_get(3)
+ * fails. See the manpages to these calls as to what exceptions may be raised.
+ */
 static VALUE ea_refresh_attributes( VALUE self ) 
 {
 // NOTE: rb_hash_clear is not public for the C API because apparently
@@ -57,6 +70,26 @@ char *path = extract_ruby_string( path_value );
   return rb_funcall( self, rb_intern("reset"), 0 );
 }
 
+/* 
+ * call-seq:
+ *    ExtendedAttributes#store
+ *
+ * Flushes the current attributes to disk. Note that this will only access
+ * the user namespace. Also, only known attributes are affected.
+ *
+ * If some other process added attributes since the last read, they will 
+ * be untouched. Changes that other processes made, *WILL* be otherwritten 
+ * though. Removing attributes that no longer exist will not trigger an error.
+ *
+ * Will raise an Errno-Exception if a call to attr_set(3) or attr_remove(3)
+ * fails. See the manpages to these calls to see what exceptions may be raised.
+ *
+ * Note that the check for the attributes value length is not very bullet-proof
+ * and an exception may be raised here instead of during the setting. 
+ *
+ * Be aware of what your filesystem can and cannot do. See #[]= for a quick
+ * summary of some limits.
+ */
 static VALUE ea_store_attributes( VALUE self ) 
 {
 VALUE path_value = rb_iv_get( self, "@path" );
