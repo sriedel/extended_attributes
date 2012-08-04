@@ -68,6 +68,7 @@ void Init_extended_attributes_ext( void ) {
   cExtendedAttributes = rb_define_class( "ExtendedAttributes", rb_cObject );
   rb_define_method( cExtendedAttributes, "refresh_attributes", ea_refresh_attributes, 0 );
   rb_define_method( cExtendedAttributes, "store", ea_store_attributes, 0 );
+  rb_define_const( cExtendedAttributes, "MAX_VALUE_LENGTH", LONG2FIX(ATTR_MAX_VALUELEN) );
 }
 
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size )

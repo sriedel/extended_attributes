@@ -49,6 +49,9 @@ describe ExtendedAttributes do
   let( :file_with_attributes ) { File.join( "tmp", "attributes" ) }
   let( :file_without_attributes ) { File.join( "tmp", "noattributes" ) }
 
+  it( "should have the ATTR_MAX_VALUELEN constant encoded in ruby" ) do
+    ExtendedAttributes::MAX_VALUE_LENGTH.should > 0
+  end
 
   describe "the initializer" do
     subject { ExtendedAttributes.new( file_without_attributes ) }
