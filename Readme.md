@@ -52,5 +52,4 @@ Resetting to attributes as they were read on the filesystem:
 ##  TODO
 * Make following symlinks optional
 * Deal with root namespace (?)
-* Raise proper exceptions from the C extension
 * Add filesystem capability check (?)

@@ -85,13 +85,8 @@ int retval = 10;
 
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name )
 {
-/* FIXME: This function isn't thread safe! Serialize! */
-static char *value_buffer = NULL;
+char *value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
 int value_buffer_size = ATTR_MAX_VALUELEN;
-
-  if( value_buffer == NULL ) {
-    value_buffer = (char*)malloc( sizeof(char) * ATTR_MAX_VALUELEN );
-  }
 
   get_attribute_value_for_name( filepath, attribute_name, value_buffer, &value_buffer_size );
 
@@ -113,15 +108,11 @@ int retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, cu
 static void read_attributes_into_hash( const char *filepath, VALUE hash )
 {
 int buffersize = ATTR_MAX_VALUELEN + sizeof(attrlist_t);
-static void *buffer = NULL;
+void *buffer = malloc( buffersize );
 attrlist_cursor_t cursor;
 attrlist_t *list = NULL;
 int done = 0;
 int entry_index = 0;
-
-  if( buffer == NULL ) {
-    buffer = (void*)malloc( buffersize );
-  }
 
   memset( &cursor, 0, sizeof(attrlist_cursor_t) );
   while( !done ) {
