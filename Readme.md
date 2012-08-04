@@ -48,8 +48,3 @@ Resetting to attributes as they were read on the filesystem:
 ##  Requirements
 * libc >= 2.10
 * ruby 1.9.3 (not tested under 1.9.2 but I see no reason why it shouldn't work)
-
-##  TODO
-* Make following symlinks optional
-* Deal with root namespace (?)
-* Add filesystem capability check (?)

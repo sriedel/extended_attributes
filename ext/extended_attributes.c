@@ -83,7 +83,7 @@ int retval = 10;
 
   memset( buffer, 0, *buffer_size );
 
-  retval = attr_get( filepath, attribute_name, buffer, buffer_size, ATTR_DONTFOLLOW );
+  retval = attr_get( filepath, attribute_name, buffer, buffer_size, 0 );
   if( retval == -1 ) {
     rb_sys_fail( filepath );
   }
@@ -104,7 +104,7 @@ int value_buffer_size = ATTR_MAX_VALUELEN;
 
 static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor )
 {
-int retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, cursor );
+int retval = attr_list( filepath, (char*)buffer, buffersize, 0, cursor );
 
   if( retval == -1 ) {
     rb_sys_fail( filepath );
