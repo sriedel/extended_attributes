@@ -194,7 +194,12 @@ describe ExtendedAttributes do
       subject.should be_persisted
     end
 
-    it "should be true after writing"
+    it "should be true after writing" do
+      subject["attr1"] = "quux"
+      subject.store
+      subject.should be_persisted
+    end
+
     it "should be true if changing all attributes back to the original value"
   end
 

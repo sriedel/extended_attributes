@@ -3,19 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
-/* For debugging purposes */
-#include <sys/types.h>
-#include <signal.h>
-#include <unistd.h>
-/* debugging end */
-
 #include "ruby.h"
-
-typedef struct {
-  attr_multiop_t *commands;
-  int total_commands;
-  int next_command;
-} command_list_t;
 
 static void read_attrs( const char *filepath );
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name );
@@ -24,9 +12,8 @@ static void get_next_attribute_list_entries( const char *filepath, char *buffer,
 static void get_attribute_value_for_name( const char *filepath, const char *attribute_name, char *buffer, int *buffer_size );
 static void store_attribute_changes_to_file( const char *filepath, VALUE change_hash );
 
-static command_list_t *build_command_list( VALUE change_hash );
-static int add_change_command_iterator( VALUE key, VALUE value, VALUE extra );
-static int add_add_command_iterator( VALUE key, VALUE value, VALUE extra );
+static void set_changed_attributes( const char *filepath, VALUE change_hash );
+static int set_command_iterator( VALUE key, VALUE value, VALUE extra );
 
 static void remove_removed_attributes( const char *filepath, VALUE change_hash );
 static int remove_command_iterator( VALUE key, VALUE value, VALUE extra );
@@ -152,44 +139,7 @@ int entry_index = 0;
 
 static void store_attribute_changes_to_file( const char *filepath, VALUE change_hash )
 {
-command_list_t *command_list = build_command_list( change_hash );
-int retval = 0;
-int i = 0;
-
-  /* fprintf( stderr, "%d\n", getpid() ); */
-  /* kill( getpid(), SIGSTOP ); */
-
-  retval = attr_multi( filepath, command_list->commands, command_list->total_commands, 0 );
-  if( retval == -1 ) {
-    fprintf( stderr, "Error setting list: %s\n", strerror(errno) );
-    exit(-1);
-  }
-
-  for( i = 0 ; i < command_list->total_commands; ++i ) {
-    attr_multiop_t *command = &(command_list->commands[i]);
-    int operation_error_code = command->am_error;
-
-    if( operation_error_code != 0 ) {
-      fprintf( stderr, "Error performing operation: %d\n", operation_error_code );
-      fprintf( stderr, "Filepath: %s\n", filepath );
-      fprintf( stderr, "Operation: %d\n", command->am_opcode );
-      fprintf( stderr, "Attribute Name: %s\n", command->am_attrname );
-      if( command->am_opcode != ATTR_OP_REMOVE ) {
-        fprintf( stderr, "Attribute Value: %s\n", command->am_attrvalue );
-      }
-    }
-  }
-
-  for( i = 0 ; i < command_list->total_commands; ++i ) {
-    attr_multiop_t *command = &(command_list->commands[i]);
-    free( command->am_attrname );
-    if( command->am_opcode != ATTR_OP_REMOVE ) {
-      free( command->am_attrvalue );
-    }
-  }
-  free( command_list->commands );
-  free( command_list );
-
+  set_changed_attributes( filepath, change_hash );
   remove_removed_attributes( filepath, change_hash );
 }
 
@@ -201,51 +151,35 @@ int hash_entries = rb_hash_tbl(removed_values_hash)->num_entries;
   rb_hash_foreach( removed_values_hash, remove_command_iterator, (VALUE)filepath );
 }
 
-static command_list_t *build_command_list( VALUE change_hash ) 
+static void set_changed_attributes( const char *filepath, VALUE change_hash ) 
 {
-command_list_t *commands = (command_list_t*)malloc( sizeof(command_list_t) );
-
 VALUE changed_values_hash = rb_hash_aref( change_hash, rb_str_new_cstr( "changed" ) );
 VALUE added_values_hash   = rb_hash_aref( change_hash, rb_str_new_cstr( "added" ) );
-/* I'm sick and tired of looking for workarounds for all those static declared 
- * C functions.
- *
- * This isn't clean but what the fuck */
-int changed_values_entries = rb_hash_tbl(changed_values_hash)->num_entries;
-int added_values_entries = rb_hash_tbl(added_values_hash)->num_entries;
-int entries = changed_values_entries + added_values_entries;
-
-
-  memset( commands, 0, sizeof( command_list_t ) );
   
-  commands->commands = (attr_multiop_t*)malloc( entries * sizeof( attr_multiop_t ) );
-  commands->total_commands = entries;
-  commands->next_command = 0;
-
-  rb_hash_foreach( changed_values_hash, add_change_command_iterator, (VALUE)commands );
-  rb_hash_foreach( added_values_hash,   add_add_command_iterator,    (VALUE)commands );
-
-  return commands;
+  rb_hash_foreach( changed_values_hash, set_command_iterator, (VALUE)filepath );
+  rb_hash_foreach( added_values_hash,   set_command_iterator, (VALUE)filepath );
 }
 
-static int add_change_command_iterator( VALUE key, VALUE value, VALUE extra ) 
+static int set_command_iterator( VALUE key, VALUE value, VALUE extra ) 
 {
-command_list_t *command_list = (command_list_t*)extra;
+const char *filepath = (const char*)extra;
 
 VALUE key_string_val = StringValue( key );
 char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_val) );
 VALUE value_string_val = StringValue( value );
 char *value_string = strndup( RSTRING_PTR( value_string_val ), RSTRING_LEN( value_string_val ) );
+int retval = 0;
 
-attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
+  retval = attr_set( filepath, key_string, value_string, strlen(value_string), 0 );
+  if( retval == -1 ) {
+    fprintf( stderr, "Error setting attribute %s to %s from %s: %d\n", key_string, value_string, filepath, errno );
+    exit(-1);
 
-  command->am_opcode = ATTR_OP_SET;
-  command->am_attrname = key_string;
-  command->am_attrvalue = value_string;
-  command->am_length = strlen( value_string );
-  /* command.am_flags = ATTR_REPLACE; */ /* TODO: Think about error handling if this fails! */
+  }
   
-  command_list->next_command++;
+  free( key_string );
+  free( value_string );
+
   return ST_CONTINUE;
 }
 
@@ -264,28 +198,7 @@ int retval = 0;
     /* TODO real error handling here in line with what attr_multi would do*/
   }
 
+  free( key_string );
+
   return ST_CONTINUE;
 }
-
-static int add_add_command_iterator( VALUE key, VALUE value, VALUE extra ) 
-{
-command_list_t *command_list = (command_list_t*)extra;
-
-VALUE key_string_val = StringValue( key );
-char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_val) );
-VALUE value_string_val = StringValue( value );
-char *value_string = strndup( RSTRING_PTR( value_string_val ), RSTRING_LEN( value_string_val ) );
-
-attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
-
-  command->am_opcode = ATTR_OP_SET;
-  command->am_attrname = key_string;
-  command->am_attrvalue = value_string;
-  command->am_length = strlen( value_string );
-  /* command.am_flags = ATTR_CREATE; */ /* TODO: Think about error handling if this fails! */
-  
-  command_list->next_command++;
-  return ST_CONTINUE;
-}
-
-
