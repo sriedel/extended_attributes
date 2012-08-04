@@ -5,25 +5,46 @@ describe ExtendedAttributes do
   ATTR_TEMPLATE_FILE = File.join( "tmp", "attr_template" )
   EMPTY_TEMPLATE_FILE = File.join( "tmp", "empty_template" )
 
-  before( :all ) do
+  def fs_attrs_to_hash( filepath )
+    getfattr_output = %x{getfattr -d #{filepath}}
+    STDERR.puts "output:\n#{getfattr_output}"
+
+    getfattr_output.lines.grep( /^user./ ).each_with_object( {} ) do |line, attrs|
+      line.chomp!
+      name, value = line.split( '=', 2 )
+      name.sub!( /^user\./, '' ) # strip user/root namespace
+      value.gsub!( /(?:^"|"$)/, '' ) # strip leading/trailing "
+      attrs[name] = value
+    end
+  end
+
+  def hash_to_fs_attrs( filepath, hash )
+    File.open( ATTR_TEMPLATE_FILE, "w" ) do |fh|
+      fh.puts "# file: #{filepath}"
+      hash.each_pair do |attr_name, attr_value|
+        fh.puts %W{user.#{attr_name}="#{attr_value}"}
+      end
+      fh.puts
+    end
+
+    `setfattr --restore=#{ATTR_TEMPLATE_FILE}`
+  end
+
+  before( :each ) do
     attrfile = File.join( "tmp", "attributes" )
     emptyfile = File.join( "tmp", "noattributes" )
 
     FileUtils.mkdir( "tmp" ) unless File.exists?( "tmp" )
 
+    FileUtils.rm( attrfile ) if File.exists?( attrfile )
+    FileUtils.rm( emptyfile ) if File.exists?( emptyfile )
+
     FileUtils.touch( attrfile )
     FileUtils.touch( emptyfile )
 
-    File.open( ATTR_TEMPLATE_FILE, "w" ) do |fh|
-      fh.puts <<-EOF
-# file: #{attrfile}
-user.attr1="i stay the same"
-user.attr2="i change"
-user.attr3="i get removed"
-
-      EOF
-    end
-    `setfattr --restore=#{ATTR_TEMPLATE_FILE}`
+    hash_to_fs_attrs( attrfile, { "attr1" => "i stay the same",
+                                  "attr2" => "i change",
+                                  "attr3" => "i get removed" } )
   end
 
   let( :file_with_attributes ) { File.join( "tmp", "attributes" ) }
@@ -182,9 +203,9 @@ user.attr3="i get removed"
     subject { ExtendedAttributes.new( file_with_attributes ) }
 
     it "should return an empty hash if nothing changed" do
-      subject.attribute_changes.should eq( :changed => {},
-                                           :removed => {},
-                                           :added   => {} )
+      subject.attribute_changes.should eq( "changed" => {},
+                                           "removed" => {},
+                                           "added"   => {} )
     end
 
     context "when something changed" do
@@ -195,11 +216,43 @@ user.attr3="i get removed"
       end
 
       it "should return a hash reflecting the changes" do
-        subject.attribute_changes.should eq( :changed => { "attr2" => "some other value" },
-                                             :removed => { "attr3" => nil },
-                                             :added   => { "attr4" => "a new value" } )
+        subject.attribute_changes.should eq( "changed" => { "attr2" => "some other value" },
+                                             "removed" => { "attr3" => nil },
+                                             "added"   => { "attr4" => "a new value" } )
       end
     end
-    
+  end
+
+  describe "#store" do
+    subject { ExtendedAttributes.new( file_with_attributes ) }
+
+    before( :each ) do
+      subject["attr2"] = "some other value"
+      subject["attr3"] = nil
+      subject["attr4"] = "a new value"
+    end
+
+    it "should change the changed attributes" do
+      subject.store
+
+      present_attributes = fs_attrs_to_hash( file_with_attributes )
+      present_attributes["attr2"].should == "some other value"
+    end
+
+    it "should delete the deleted attributes" do
+      subject.store
+
+      present_attributes = fs_attrs_to_hash( file_with_attributes )
+      present_attributes["attr3"].should be_nil
+    end
+
+    it "should add the added attributes" do
+      subject.store
+
+      present_attributes = fs_attrs_to_hash( file_with_attributes )
+      present_attributes["attr4"].should == "a new value"
+    end
+
+    it "should re-read the attributes present in the file"
   end
 end
