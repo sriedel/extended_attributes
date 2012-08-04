@@ -7,7 +7,6 @@ describe ExtendedAttributes do
 
   def fs_attrs_to_hash( filepath )
     getfattr_output = %x{getfattr -d #{filepath}}
-    STDERR.puts "output:\n#{getfattr_output}"
 
     getfattr_output.lines.grep( /^user./ ).each_with_object( {} ) do |line, attrs|
       line.chomp!

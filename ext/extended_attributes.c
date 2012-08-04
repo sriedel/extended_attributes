@@ -26,8 +26,10 @@ static void store_attribute_changes_to_file( const char *filepath, VALUE change_
 
 static command_list_t *build_command_list( VALUE change_hash );
 static int add_change_command_iterator( VALUE key, VALUE value, VALUE extra );
-static int add_remove_command_iterator( VALUE key, VALUE value, VALUE extra );
 static int add_add_command_iterator( VALUE key, VALUE value, VALUE extra );
+
+static void remove_removed_attributes( const char *filepath, VALUE change_hash );
+static int remove_command_iterator( VALUE key, VALUE value, VALUE extra );
 
 static VALUE ea_refresh_attributes( VALUE self );
 static VALUE ea_store_attributes( VALUE self );
@@ -167,7 +169,7 @@ int i = 0;
     attr_multiop_t *command = &(command_list->commands[i]);
     int operation_error_code = command->am_error;
 
-    /* if( operation_error_code != 0 ) { */
+    if( operation_error_code != 0 ) {
       fprintf( stderr, "Error performing operation: %d\n", operation_error_code );
       fprintf( stderr, "Filepath: %s\n", filepath );
       fprintf( stderr, "Operation: %d\n", command->am_opcode );
@@ -175,7 +177,7 @@ int i = 0;
       if( command->am_opcode != ATTR_OP_REMOVE ) {
         fprintf( stderr, "Attribute Value: %s\n", command->am_attrvalue );
       }
-    /* } */
+    }
   }
 
   for( i = 0 ; i < command_list->total_commands; ++i ) {
@@ -187,6 +189,16 @@ int i = 0;
   }
   free( command_list->commands );
   free( command_list );
+
+  remove_removed_attributes( filepath, change_hash );
+}
+
+static void remove_removed_attributes( const char *filepath, VALUE change_hash )
+{
+VALUE removed_values_hash = rb_hash_aref( change_hash, rb_str_new_cstr( "removed" ) );
+int hash_entries = rb_hash_tbl(removed_values_hash)->num_entries;
+
+  rb_hash_foreach( removed_values_hash, remove_command_iterator, (VALUE)filepath );
 }
 
 static command_list_t *build_command_list( VALUE change_hash ) 
@@ -194,16 +206,14 @@ static command_list_t *build_command_list( VALUE change_hash )
 command_list_t *commands = (command_list_t*)malloc( sizeof(command_list_t) );
 
 VALUE changed_values_hash = rb_hash_aref( change_hash, rb_str_new_cstr( "changed" ) );
-VALUE removed_values_hash = rb_hash_aref( change_hash, rb_str_new_cstr( "removed" ) );
 VALUE added_values_hash   = rb_hash_aref( change_hash, rb_str_new_cstr( "added" ) );
 /* I'm sick and tired of looking for workarounds for all those static declared 
  * C functions.
  *
  * This isn't clean but what the fuck */
 int changed_values_entries = rb_hash_tbl(changed_values_hash)->num_entries;
-int removed_values_entries = rb_hash_tbl(removed_values_hash)->num_entries;
 int added_values_entries = rb_hash_tbl(added_values_hash)->num_entries;
-int entries = changed_values_entries + removed_values_entries + added_values_entries;
+int entries = changed_values_entries + added_values_entries;
 
 
   memset( commands, 0, sizeof( command_list_t ) );
@@ -213,7 +223,6 @@ int entries = changed_values_entries + removed_values_entries + added_values_ent
   commands->next_command = 0;
 
   rb_hash_foreach( changed_values_hash, add_change_command_iterator, (VALUE)commands );
-  rb_hash_foreach( removed_values_hash, add_remove_command_iterator, (VALUE)commands );
   rb_hash_foreach( added_values_hash,   add_add_command_iterator,    (VALUE)commands );
 
   return commands;
@@ -230,8 +239,6 @@ char *value_string = strndup( RSTRING_PTR( value_string_val ), RSTRING_LEN( valu
 
 attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
 
-  fprintf( stderr, "Changing attribute %s: %s\n", key_string, value_string );
-
   command->am_opcode = ATTR_OP_SET;
   command->am_attrname = key_string;
   command->am_attrvalue = value_string;
@@ -242,23 +249,21 @@ attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
   return ST_CONTINUE;
 }
 
-static int add_remove_command_iterator( VALUE key, VALUE value, VALUE extra ) 
+static int remove_command_iterator( VALUE key, VALUE value, VALUE extra ) 
 {
-command_list_t *command_list = (command_list_t*)extra;
+const char *filepath = (const char*)extra;
 
 VALUE key_string_val = StringValue( key );
 char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_val) );
+int retval = 0;
 
-attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
-  fprintf( stderr, "Removing attribute %s\n", key_string );
+  retval = attr_remove( filepath, key_string, 0 );
+  if( retval == -1 ) {
+    fprintf( stderr, "Error removing attribute %s from %s: %d\n", key_string, filepath, errno );
+    exit(-1);
+    /* TODO real error handling here in line with what attr_multi would do*/
+  }
 
-  command->am_opcode = ATTR_OP_REMOVE;
-  command->am_attrname = key_string;
-  command->am_attrvalue = NULL;
-  command->am_length = 0;
-  command->am_flags = 0;
-  
-  command_list->next_command++;
   return ST_CONTINUE;
 }
 
@@ -273,7 +278,6 @@ char *value_string = strndup( RSTRING_PTR( value_string_val ), RSTRING_LEN( valu
 
 attr_multiop_t *command = &(command_list->commands[command_list->next_command]);
 
-  fprintf( stderr, "Adding attribute %s: %s\n", key_string, value_string );
   command->am_opcode = ATTR_OP_SET;
   command->am_attrname = key_string;
   command->am_attrvalue = value_string;
