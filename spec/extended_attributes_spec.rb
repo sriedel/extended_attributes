@@ -93,9 +93,7 @@ describe ExtendedAttributes do
 
   describe "refresh attributes" do
     it "should raise an exception if the file does not exist" do
-      pending "Figure out how to raise Errno::ENOENT from C"
-      ea = ExtendedAttributes.new( "tmp/i_do_not_exist" )
-      lambda { ea["foo"] }.should raise_error( Errno::ENOENT )
+      lambda { ExtendedAttributes.new( "tmp/i_do_not_exist" ) }.should raise_error( Errno::ENOENT )
     end
 
     context "if the file has no attributes" do
@@ -257,6 +255,12 @@ describe ExtendedAttributes do
       present_attributes["attr4"].should == "a new value"
     end
 
-    it "should re-read the attributes present in the file"
+    it "should re-read the attributes present in the file" do
+      subject.reset # just to ensure that subject exists at this point
+      hash_to_fs_attrs( file_with_attributes, { "added_attr" => "i'm new around here" } )
+      subject.store
+
+      subject["added_attr"].should == "i'm new around here"
+    end
   end
 end

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <attr/attributes.h>
+#include <attr/xattr.h> /* for ENOATTR */
 #include <errno.h>
 #include <string.h>
 
@@ -77,8 +78,7 @@ int retval = 10;
 
   retval = attr_get( filepath, attribute_name, buffer, buffer_size, ATTR_DONTFOLLOW );
   if( retval == -1 ) {
-    /* FIXME: Raise Errno Exception as soon as I figure out how */
-    exit(-2);
+    rb_sys_fail( filepath );
   }
 }
 
@@ -105,9 +105,7 @@ static void get_next_attribute_list_entries( const char *filepath, char *buffer,
 int retval = attr_list( filepath, (char*)buffer, buffersize, ATTR_DONTFOLLOW, cursor );
 
   if( retval == -1 ) {
-    /* FIXME: Raise Errno Exception as soon as I figure out how */
-    fprintf( stderr, "Error retrieving list: %s\n", strerror(errno) );
-    exit(-1);
+    rb_sys_fail( filepath );
   }
 }
 
@@ -172,9 +170,7 @@ int retval = 0;
 
   retval = attr_set( filepath, key_string, value_string, strlen(value_string), 0 );
   if( retval == -1 ) {
-    fprintf( stderr, "Error setting attribute %s to %s from %s: %d\n", key_string, value_string, filepath, errno );
-    exit(-1);
-
+    rb_sys_fail( filepath );
   }
   
   free( key_string );
@@ -192,11 +188,10 @@ char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_
 int retval = 0;
 
   retval = attr_remove( filepath, key_string, 0 );
-  if( retval == -1 ) {
-    fprintf( stderr, "Error removing attribute %s from %s: %d\n", key_string, filepath, errno );
-    exit(-1);
-    /* TODO real error handling here in line with what attr_multi would do*/
+  if( retval == -1 && errno != ENOATTR ) {
+    rb_sys_fail( filepath );
   }
+  /* TODO: Decide on what to do in the ENOATTR case */
 
   free( key_string );
 
