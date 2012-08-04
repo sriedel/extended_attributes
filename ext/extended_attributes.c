@@ -100,6 +100,8 @@ int value_buffer_size = ATTR_MAX_VALUELEN;
     rb_hash_aset( hash, rb_str_new_cstr( attribute_name ), 
                         rb_str_new_cstr( value_buffer ) );
   }
+
+  free( value_buffer );
 }
 
 static void get_next_attribute_list_entries( const char *filepath, char *buffer, int buffersize, attrlist_cursor_t *cursor )
@@ -131,6 +133,8 @@ int entry_index = 0;
     }
     done = !list->al_more;
   }
+
+  free( buffer );
 }
 
 static void store_attribute_changes_to_file( const char *filepath, VALUE change_hash )
