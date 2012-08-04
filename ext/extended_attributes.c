@@ -6,6 +6,8 @@
 
 #include "ruby.h"
 
+static inline char* extract_ruby_string( VALUE ruby_string );
+
 static void read_attrs( const char *filepath );
 static void add_attribute_value_to_hash( const char *filepath, VALUE hash, const char *attribute_name );
 static void read_attributes_into_hash( const char *filepath, VALUE hash );
@@ -26,6 +28,12 @@ void Init_extended_attributes_ext(void);
 
 VALUE cExtendedAttributes;
 
+static inline char *extract_ruby_string( VALUE ruby_string )
+{
+VALUE string = StringValue( ruby_string );
+  return strndup( RSTRING_PTR(string), RSTRING_LEN(string) );
+}
+
 static VALUE ea_refresh_attributes( VALUE self ) 
 {
 // NOTE: rb_hash_clear is not public for the C API because apparently
@@ -39,8 +47,7 @@ static VALUE ea_refresh_attributes( VALUE self )
 VALUE original_attributes_hash = rb_hash_new();
 
 VALUE path_value = rb_iv_get( self, "@path" );
-VALUE path_string = StringValue( path_value );
-char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
+char *path = extract_ruby_string( path_value );
 
   read_attributes_into_hash( path, original_attributes_hash );
   rb_iv_set( self, "@original_attributes_hash", original_attributes_hash );
@@ -53,8 +60,7 @@ char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
 static VALUE ea_store_attributes( VALUE self ) 
 {
 VALUE path_value = rb_iv_get( self, "@path" );
-VALUE path_string = StringValue( path_value );
-char *path = strndup( RSTRING_PTR(path_string), RSTRING_LEN(path_string) );
+char *path = extract_ruby_string( path_value );
 
 VALUE changes_hash = rb_funcall( self, rb_intern( "attribute_changes" ), 0 );
 
@@ -154,10 +160,8 @@ static int set_command_iterator( VALUE key, VALUE value, VALUE extra )
 {
 const char *filepath = (const char*)extra;
 
-VALUE key_string_val = StringValue( key );
-char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_val) );
-VALUE value_string_val = StringValue( value );
-char *value_string = strndup( RSTRING_PTR( value_string_val ), RSTRING_LEN( value_string_val ) );
+char *key_string = extract_ruby_string( key );
+char *value_string = extract_ruby_string( value );
 int retval = 0;
 
   retval = attr_set( filepath, key_string, value_string, strlen(value_string), 0 );
@@ -175,8 +179,7 @@ static int remove_command_iterator( VALUE key, VALUE value, VALUE extra )
 {
 const char *filepath = (const char*)extra;
 
-VALUE key_string_val = StringValue( key );
-char *key_string = strndup( RSTRING_PTR(key_string_val), RSTRING_LEN(key_string_val) );
+char *key_string = extract_ruby_string( key );
 int retval = 0;
 
   retval = attr_remove( filepath, key_string, 0 );
