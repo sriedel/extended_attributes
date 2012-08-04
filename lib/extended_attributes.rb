@@ -32,6 +32,8 @@ class ExtendedAttributes
     value_s = value.to_s
     return @attributes_hash.delete( key_s ) if value_s == ""
 
+    raise ArgumentError if value_s.length > MAX_VALUE_LENGTH
+
     @attributes_hash[key_s] = value_s
   end
   alias_method :set, :[]=

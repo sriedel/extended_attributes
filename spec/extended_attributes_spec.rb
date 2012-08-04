@@ -164,6 +164,11 @@ describe ExtendedAttributes do
       subject["attr4"] = 234
       subject["attr4"].should == "234"
     end
+
+    it "should raise an exception if the value is too long" do
+      too_large_value = "x" * (ExtendedAttributes::MAX_VALUE_LENGTH + 1 )
+      lambda { subject["attr1"] = too_large_value }.should raise_error( ArgumentError )
+    end
   end
 
   describe "#reset" do
